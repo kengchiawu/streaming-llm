@@ -85,6 +85,8 @@ def llama_pos_shift_attention_forward(
     kv_seq_len = key_states.shape[-2]
     if past_key_value is not None:
         kv_seq_len += past_key_value[0].shape[-2]
+    # 计算 key_states 的序列长度（kv_seq_len）。
+    # 如果有 past_key_value，则将之前缓存的键的序列长度加到当前的序列长度中。
     cos, sin = self.rotary_emb(value_states, seq_len=kv_seq_len)
     ### Shift Pos: query pos is min(cache_size, idx)
     # query_states, key_states = apply_rotary_pos_emb(query_states, key_states, cos, sin, position_ids)
