@@ -14,7 +14,7 @@ import json
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--model_name_or_path", type=str, default="lmsys/vicuna-13b-v1.3"#"models/llama/llama-7b"
+        "--model_name_or_path", type=str, default="huggyllama/llama-7b"#"models/llama/llama-7b"
     )
     parser.add_argument("--revision", type=str, default="main")
     parser.add_argument("--tokenizer_name_or_path", type=str, default=None)

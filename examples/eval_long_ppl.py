@@ -10,7 +10,10 @@ from streaming_llm.utils import parse_args, load
 device = "cuda"
 
 args = parse_args()
-#args.model_name_or_path = 'C:/Users/y1116/.cache/huggingface/hub/models--Qwen--Qwen2.5-1.5B-Instruct/snapshots/989aa7980e4cf806f80c7fef2b1adb7bc71aa306'
+args.model_name_or_path = 'C:/Users/y1116/.cache/huggingface/hub/models--huggyllama--llama-7b/snapshots/4782ad278652c7c71b72204d462d6d01eaaf7549'
+args.start_size = 4
+args.recent_size = 2000
+args.num_eval_tokens = 50
 data = load_dataset(args.dataset_name, args.task, split=args.split)
 
 model, tokenizer = load(args.model_name_or_path)
@@ -18,7 +21,7 @@ model, tokenizer = load(args.model_name_or_path)
 nlls = []
 loss_fn = CrossEntropyLoss(reduction="none")
 past_key_values = None
-
+#print(args.enable_start_recent_kv_cache)
 if args.enable_start_recent_kv_cache:
     if "llama" in model.config.model_type:
         k_seq_dim = v_seq_dim = 2
@@ -38,37 +41,41 @@ if args.enable_start_recent_kv_cache:
         k_seq_dim=k_seq_dim,
         v_seq_dim=v_seq_dim,
     )
+    print("enable kv_cache\n")
 else:
     kv_cache = None
 
 if args.enable_pos_shift:
     if "llama" in model.config.model_type:
         from streaming_llm.pos_shift.modify_llama import enable_llama_pos_shift_attention
-
+        print("enable llama pos shift\n")
         enable_llama_pos_shift_attention(model)
     elif "falcon" in model.config.model_type:
         from streaming_llm.pos_shift.modify_falcon import (
             enable_falcon_pos_shift_attention,
         )
-
+        print("enable falcon pos shift\n")
         enable_falcon_pos_shift_attention(model)
     elif "gpt_neox" in model.config.model_type:
         from streaming_llm.pos_shift.modify_gpt_neox import (
             enable_gpt_neox_pos_shift_attention,
         )
-
+        print("enable gpt-neox pos shift\n")
         enable_gpt_neox_pos_shift_attention(model)
     elif "mpt" in model.config.model_type:
+        print("mpt does not support pos shift\n")
         pass
     else:
         raise ValueError(f"got {model.config.model_type}")
+        print("disable pos shift")
 
 
 os.makedirs(args.output_dir, exist_ok=True)
 f = open(f"{args.output_dir}/log.txt", "w")
-
+ff = open(f"{args.output_dir}/log_ppl.txt", "w")
 num_eval_tokens = 0
-for text in data["text"][: 10]:
+nll_sum = 0.0
+for text in data["text"][: data.num_rows]:
     encodings = tokenizer(text, return_tensors="pt")
 
     print(encodings.input_ids[:, :10])
@@ -95,15 +102,22 @@ for text in data["text"][: 10]:
         pbar.set_description(
             f"nll: {neg_log_likelihood.item():.2f}, ppl: {torch.exp(neg_log_likelihood).item():.2f}"
         )
-        print(neg_log_likelihood.item(), file=f, flush=True)
+        nll_sum = nll_sum + neg_log_likelihood.item()
         num_eval_tokens += 1
+        print(f'nll:{neg_log_likelihood.item():>10.4f}  nll_sum:{nll_sum:>10.4f} tokens_count:{num_eval_tokens}', file=f, flush=True)
+        
+        
         if args.num_eval_tokens is not None and num_eval_tokens >= args.num_eval_tokens:
-            break
-    if args.num_eval_tokens is not None and num_eval_tokens >= args.num_eval_tokens:
+            args.num_eval_tokens = args.num_eval_tokens + 50
+            nll_sum = nll_sum / 50.0
+            print(f"nll:{nll_sum:8.4f}  eval_tokens:{num_eval_tokens}\n",file=ff,flush=True)
+            nll_sum = 0.0
+
+    if args.num_eval_tokens is not None and num_eval_tokens >= 20000:
         break
 
 f.close()
-
+ff.close()
 ppl = torch.exp(torch.stack(nlls).mean())
 print(ppl.item())
 with open(f"{args.output_dir}/ppl.txt", "w") as f:
