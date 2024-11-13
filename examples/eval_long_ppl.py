@@ -10,7 +10,7 @@ from streaming_llm.utils import parse_args, load
 device = "cuda"
 
 args = parse_args()
-args.model_name_or_path = 'C:/Users/y1116/.cache/huggingface/hub/models--Qwen--Qwen2.5-1.5B-Instruct/snapshots/989aa7980e4cf806f80c7fef2b1adb7bc71aa306'
+#args.model_name_or_path = 'C:/Users/y1116/.cache/huggingface/hub/models--Qwen--Qwen2.5-1.5B-Instruct/snapshots/989aa7980e4cf806f80c7fef2b1adb7bc71aa306'
 data = load_dataset(args.dataset_name, args.task, split=args.split)
 
 model, tokenizer = load(args.model_name_or_path)
