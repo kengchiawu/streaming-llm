@@ -10,7 +10,7 @@ from streaming_llm.utils import parse_args, load
 device = "cuda"
 
 args = parse_args()
-
+args.model_name_or_path = 'C:/Users/y1116/.cache/huggingface/hub/models--Qwen--Qwen2.5-1.5B-Instruct/snapshots/989aa7980e4cf806f80c7fef2b1adb7bc71aa306'
 data = load_dataset(args.dataset_name, args.task, split=args.split)
 
 model, tokenizer = load(args.model_name_or_path)
@@ -68,7 +68,7 @@ os.makedirs(args.output_dir, exist_ok=True)
 f = open(f"{args.output_dir}/log.txt", "w")
 
 num_eval_tokens = 0
-for text in data["text"][: args.num_samples]:
+for text in data["text"][: 10]:
     encodings = tokenizer(text, return_tensors="pt")
 
     print(encodings.input_ids[:, :10])
