@@ -11,8 +11,13 @@ device = "cuda"
 
 args = parse_args()
 args.model_name_or_path = 'C:/Users/y1116/.cache/huggingface/hub/models--huggyllama--llama-7b/snapshots/4782ad278652c7c71b72204d462d6d01eaaf7549'
-args.start_size = 4
-args.recent_size = 2000
+args.start_size = 4 
+args.recent_size = 1000
+args.enable_start_recent_kv_cache = True
+args.enable_pos_shift = True
+# start_size=4 equals to attention sink =4, 
+# especially when start_size=0, it equals to window attention.
+# attention window = start_size + recent_size 
 args.num_eval_tokens = 50
 data = load_dataset(args.dataset_name, args.task, split=args.split)
 
@@ -41,29 +46,29 @@ if args.enable_start_recent_kv_cache:
         k_seq_dim=k_seq_dim,
         v_seq_dim=v_seq_dim,
     )
-    print("enable kv_cache\n")
+    print("enable kv_cache")
 else:
     kv_cache = None
 
 if args.enable_pos_shift:
     if "llama" in model.config.model_type:
         from streaming_llm.pos_shift.modify_llama import enable_llama_pos_shift_attention
-        print("enable llama pos shift\n")
+        print("enable llama pos shift")
         enable_llama_pos_shift_attention(model)
     elif "falcon" in model.config.model_type:
         from streaming_llm.pos_shift.modify_falcon import (
             enable_falcon_pos_shift_attention,
         )
-        print("enable falcon pos shift\n")
+        print("enable falcon pos shift")
         enable_falcon_pos_shift_attention(model)
     elif "gpt_neox" in model.config.model_type:
         from streaming_llm.pos_shift.modify_gpt_neox import (
             enable_gpt_neox_pos_shift_attention,
         )
-        print("enable gpt-neox pos shift\n")
+        print("enable gpt-neox pos shift")
         enable_gpt_neox_pos_shift_attention(model)
     elif "mpt" in model.config.model_type:
-        print("mpt does not support pos shift\n")
+        print("mpt does not support pos shift")
         pass
     else:
         raise ValueError(f"got {model.config.model_type}")
@@ -110,10 +115,10 @@ for text in data["text"][: data.num_rows]:
         if args.num_eval_tokens is not None and num_eval_tokens >= args.num_eval_tokens:
             args.num_eval_tokens = args.num_eval_tokens + 50
             nll_sum = nll_sum / 50.0
-            print(f"nll:{nll_sum:8.4f}  eval_tokens:{num_eval_tokens}\n",file=ff,flush=True)
+            print(f"nll:{nll_sum:8.4f}  eval_tokens:{num_eval_tokens}",file=ff,flush=True)
             nll_sum = 0.0
 
-    if args.num_eval_tokens is not None and num_eval_tokens >= 20000:
+    if args.num_eval_tokens is not None and num_eval_tokens >= 5000:
         break
 
 f.close()
