@@ -1,6 +1,7 @@
 import torch
 from tqdm import tqdm
 import os
+import datetime
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from datasets import load_dataset
 from torch.nn import CrossEntropyLoss
@@ -82,7 +83,7 @@ num_eval_tokens = 0
 nll_sum = 0.0
 for text in data["text"][: data.num_rows]:
     encodings = tokenizer(text, return_tensors="pt")
-
+    print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     print(encodings.input_ids[:, :10])
 
     seq_len = encodings.input_ids.size(1)
@@ -114,6 +115,8 @@ for text in data["text"][: data.num_rows]:
         
         if args.num_eval_tokens is not None and num_eval_tokens >= args.num_eval_tokens:
             args.num_eval_tokens = args.num_eval_tokens + 50
+            if args.num_eval_tokens is not None and num_eval_tokens > 5000:
+                break
             nll_sum = nll_sum / 50.0
             print(f"nll:{nll_sum:8.4f}  eval_tokens:{num_eval_tokens}",file=ff,flush=True)
             nll_sum = 0.0
